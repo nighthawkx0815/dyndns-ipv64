@@ -1,5 +1,9 @@
 # DDNS Updater for IPv64.net
 
+[![Docker Hub](https://img.shields.io/docker/pulls/nighthawkx00/dyndns-ipv64)](https://hub.docker.com/r/nighthawkx00/dyndns-ipv64)
+
+> Docker Hub: [hub.docker.com/r/nighthawkx00/dyndns-ipv64](https://hub.docker.com/r/nighthawkx00/dyndns-ipv64)
+
 Automatically updates your [IPv64.net](https://ipv64.net) DynDNS domains with your current public IPv4 address.
 Supports multiple domains with individual API keys and multiple IP detection services with automatic fallback.
 
