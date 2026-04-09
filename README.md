@@ -52,7 +52,7 @@ services:
       - INTERVAL=15
 ```
 
-### IPv4 + IPv6
+### IPv4 + IPv6 for all domains
 
 ```yaml
 services:
@@ -69,6 +69,29 @@ services:
       - IPV6_ENABLED=yes
 ```
 
+### Per-domain IPv6 control
+
+Enable or disable IPv6 individually per domain using `IPV6_N`.
+This overrides the global `IPV6_ENABLED` setting for that specific domain.
+
+```yaml
+services:
+  dyndns-ipv64:
+    image: nighthawkx00/dyndns-ipv64:latest
+    container_name: dyndns-ipv64
+    restart: unless-stopped
+    environment:
+      - DOMAIN_1=yourdomain.ipv64.de
+      - KEY_1=your_api_key_1
+      - IPV6_1=yes              # Domain 1: IPv4 + IPv6
+
+      - DOMAIN_2=yourdomain2.ipv64.net
+      - KEY_2=your_api_key_2
+      - IPV6_2=no               # Domain 2: IPv4 only
+
+      - INTERVAL=15
+```
+
 ### Custom IP detection URLs
 
 ```yaml
@@ -80,8 +103,8 @@ services:
     environment:
       - DOMAIN_1=yourdomain.ipv64.de
       - KEY_1=your_api_key_1
+      - IPV6_1=yes
       - INTERVAL=15
-      - IPV6_ENABLED=yes
       - IP_SERVICES=https://icanhazip.com,https://api.ipify.org
       - IP6_SERVICES=https://api6.ipify.org,https://ipv6.icanhazip.com
 ```
@@ -92,12 +115,15 @@ services:
 |----------|----------|---------|-------------|
 | `DOMAIN_1` | ✓ | — | First domain to update |
 | `KEY_1` | ✓ | — | API key for DOMAIN_1 |
+| `IPV6_1` | ✗ | — | IPv6 for DOMAIN_1: `yes` or `no` (overrides global) |
 | `DOMAIN_2` | ✗ | — | Second domain (optional) |
 | `KEY_2` | ✗ | — | API key for DOMAIN_2 |
+| `IPV6_2` | ✗ | — | IPv6 for DOMAIN_2: `yes` or `no` (overrides global) |
 | `DOMAIN_N` | ✗ | — | Add as many domains as needed |
 | `KEY_N` | ✗ | — | API key for DOMAIN_N |
+| `IPV6_N` | ✗ | — | IPv6 for DOMAIN_N: `yes` or `no` (overrides global) |
 | `INTERVAL` | ✗ | `15` | Update interval in minutes |
-| `IPV6_ENABLED` | ✗ | `no` | Enable IPv6 updates: `yes` or `no` |
+| `IPV6_ENABLED` | ✗ | `no` | Global IPv6 default for all domains: `yes` or `no` |
 | `IP_SERVICES` | ✗ | see above | Comma-separated custom IPv4 detection URLs |
 | `IP6_SERVICES` | ✗ | see above | Comma-separated custom IPv6 detection URLs |
 
