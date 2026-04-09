@@ -10,6 +10,7 @@ Supports multiple domains with individual API keys and multiple IP detection ser
 
 - Multiple domains with individual API keys
 - IPv4 (A Record) and IPv6 (AAAA Record) support
+- **DNS pre-check** — compares current DNS with public IP before sending update (saves API calls)
 - Automatic fallback across multiple IP detection services
 - Configurable update interval
 - Custom IP detection URLs supported
@@ -17,19 +18,19 @@ Supports multiple domains with individual API keys and multiple IP detection ser
 - Works with default Docker bridge network — no `network_mode: host` required
 - Automatically built and published to Docker Hub via GitHub Actions
 
+## How it works
+
+Before sending an update to IPv64.net, the container resolves the current DNS record of your domain and compares it to your public IP. An update is only sent if the IP has changed. This prevents unnecessary API calls and avoids hitting the IPv64.net rate limit (64 updates/24h).
+
 ## IP Detection Services (default)
 
 ### IPv4
-The container tries these services in order until one responds:
-
 1. `https://icanhazip.com`
 2. `https://api.ipify.org`
 3. `https://ifconfig.me/ip`
 4. `https://checkip.amazonaws.com`
 
 ### IPv6
-The container tries these services in order until one responds:
-
 1. `https://api6.ipify.org`
 2. `https://ipv6.icanhazip.com`
 3. `https://v6.ident.me`
@@ -138,6 +139,7 @@ IPv64.net returns the following status codes after each update attempt:
 | `badauth` | Invalid API key |
 | `nohost` | Domain not found in your account |
 | `abuse` | Too many requests — rate limited |
+| `Updateintervall overcommited` | Too many updates in a short time — wait and retry |
 
 ## Example Log Output
 
@@ -145,12 +147,11 @@ IPv64.net returns the following status codes after each update attempt:
 2026-04-09 08:00:00  INFO     - ==================== DDNS UPDATER IPV64.NET ====================
 2026-04-09 08:00:00  INFO     - IPv4 Detection gestartet...
 2026-04-09 08:00:01  INFO     - Oeffentliche IPv4: 87.153.193.198
-2026-04-09 08:00:01  INFO     - DOMAIN      - yourdomain.ipv64.de
-2026-04-09 08:00:01  INFO     - IP CHECK    - yourdomain.ipv64.de -> IPv4=87.153.193.198 (nochg)
-2026-04-09 08:00:02  INFO     - IPv6 Detection gestartet...
-2026-04-09 08:00:02  INFO     - Oeffentliche IPv6: 2a02:8109:abcd::1
-2026-04-09 08:00:02  INFO     - DOMAIN      - yourdomain.ipv64.de
-2026-04-09 08:00:02  INFO     - IP CHECK    - yourdomain.ipv64.de -> IPv6=2a02:8109:abcd::1 (nochg)
+2026-04-09 08:00:01  INFO     - --- yourdomain.ipv64.de ---
+2026-04-09 08:00:01  INFO     - IP CHECK    - yourdomain.ipv64.de -> IPv4=87.153.193.198 (unveraendert, kein Update noetig)
+2026-04-09 08:15:00  INFO     - --- yourdomain.ipv64.de ---
+2026-04-09 08:15:01  INFO     - IP CHANGE   - yourdomain.ipv64.de -> IPv4 alt=87.153.193.198 neu=87.153.200.1
+2026-04-09 08:15:02  INFO     - UPDATE      - yourdomain.ipv64.de -> IPv4=87.153.200.1 (good)
 ```
 
 ## API Key
@@ -163,6 +164,7 @@ Your API key can be found in your [IPv64.net account](https://ipv64.net/account)
 - Use `network_mode: host` only if your Docker bridge network has no internet access
 - IPv6 requires your host and network to support native IPv6 connectivity
 - Both A (IPv4) and AAAA (IPv6) records must exist in your IPv64.net account
+- The DNS pre-check significantly reduces API calls and prevents rate limiting
 
 ## Links
 
