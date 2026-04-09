@@ -1,5 +1,6 @@
 import os
 import time
+import socket
 import requests
 import schedule
 import logging
@@ -79,7 +80,35 @@ def get_ipv6():
             continue
     return None
 
+def get_current_dns_ipv4(domain):
+    try:
+        results = socket.getaddrinfo(domain, None, socket.AF_INET)
+        return results[0][4][0]
+    except:
+        return None
+
+def get_current_dns_ipv6(domain):
+    try:
+        results = socket.getaddrinfo(domain, None, socket.AF_INET6)
+        return results[0][4][0]
+    except:
+        return None
+
 def update_record(domain, key, ip, label="IPv4"):
+    if label == "IPv4":
+        current = get_current_dns_ipv4(domain)
+    else:
+        current = get_current_dns_ipv6(domain)
+
+    if current == ip:
+        logging.info(f"IP CHECK    - {domain} -> {label}={ip} (unveraendert, kein Update noetig)")
+        return
+
+    if current:
+        logging.info(f"IP CHANGE   - {domain} -> {label} alt={current} neu={ip}")
+    else:
+        logging.info(f"IP CHECK    - {domain} -> {label}={ip} (DNS nicht aufloesbar, sende Update)")
+
     try:
         r = requests.get(
             "https://ipv64.net/nic/update",
@@ -88,8 +117,7 @@ def update_record(domain, key, ip, label="IPv4"):
         )
         result = r.json()
         status = result.get("info", "unknown")
-        logging.info(f"DOMAIN      - {domain}")
-        logging.info(f"IP CHECK    - {domain} -> {label}={ip} ({status})")
+        logging.info(f"UPDATE      - {domain} -> {label}={ip} ({status})")
     except Exception as e:
         logging.error(f"FEHLER      - {domain}: {e}")
 
