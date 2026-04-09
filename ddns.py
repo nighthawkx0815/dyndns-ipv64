@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s  %(levelname)-8s - %(message)s')
 
 INTERVAL = int(os.environ.get("INTERVAL", "15"))
-IPV6_ENABLED = os.environ.get("IPV6_ENABLED", "no").lower() == "yes"
+IPV6_ENABLED_GLOBAL = os.environ.get("IPV6_ENABLED", "no").lower() == "yes"
 
 DEFAULT_IP_SERVICES = [
     "https://icanhazip.com",
@@ -41,7 +41,14 @@ while True:
     key = os.environ.get(f"KEY_{i}")
     if not domain or not key:
         break
-    PROVIDERS.append({"domain": domain, "key": key})
+    ipv6_str = os.environ.get(f"IPV6_{i}", "").lower()
+    if ipv6_str == "yes":
+        ipv6 = True
+    elif ipv6_str == "no":
+        ipv6 = False
+    else:
+        ipv6 = IPV6_ENABLED_GLOBAL
+    PROVIDERS.append({"domain": domain, "key": key, "ipv6": ipv6})
     i += 1
 
 def banner(text):
@@ -72,20 +79,19 @@ def get_ipv6():
             continue
     return None
 
-def update_providers(ip, label="IPv4"):
-    for p in PROVIDERS:
-        try:
-            r = requests.get(
-                "https://ipv64.net/nic/update",
-                params={"key": p["key"], "domain": p["domain"], "ip": ip},
-                timeout=10
-            )
-            result = r.json()
-            status = result.get("info", "unknown")
-            logging.info(f"DOMAIN      - {p['domain']}")
-            logging.info(f"IP CHECK    - {p['domain']} -> {label}={ip} ({status})")
-        except Exception as e:
-            logging.error(f"FEHLER      - {p['domain']}: {e}")
+def update_record(domain, key, ip, label="IPv4"):
+    try:
+        r = requests.get(
+            "https://ipv64.net/nic/update",
+            params={"key": key, "domain": domain, "ip": ip},
+            timeout=10
+        )
+        result = r.json()
+        status = result.get("info", "unknown")
+        logging.info(f"DOMAIN      - {domain}")
+        logging.info(f"IP CHECK    - {domain} -> {label}={ip} ({status})")
+    except Exception as e:
+        logging.error(f"FEHLER      - {domain}: {e}")
 
 def update_dns():
     banner("DDNS UPDATER IPV64.NET")
@@ -93,23 +99,34 @@ def update_dns():
     # IPv4
     logging.info("IPv4 Detection gestartet...")
     ip = get_ip()
-    if ip:
-        logging.info(f"Oeffentliche IPv4: {ip}")
-        update_providers(ip, "IPv4")
-    else:
+    if not ip:
         logging.error("Keine gueltige IPv4-Adresse gefunden")
+    else:
+        logging.info(f"Oeffentliche IPv4: {ip}")
 
     # IPv6
-    if IPV6_ENABLED:
+    ipv6 = None
+    any_ipv6 = any(p["ipv6"] for p in PROVIDERS)
+    if any_ipv6:
         logging.info("IPv6 Detection gestartet...")
         ipv6 = get_ipv6()
         if ipv6:
             logging.info(f"Oeffentliche IPv6: {ipv6}")
-            update_providers(ipv6, "IPv6")
         else:
             logging.warning("Keine gueltige IPv6-Adresse gefunden")
-    else:
-        logging.info("IPv6 ist deaktiviert (IPV6_ENABLED=no)")
+
+    # Update pro Domain
+    for p in PROVIDERS:
+        logging.info(f"--- {p['domain']} ---")
+        if ip:
+            update_record(p["domain"], p["key"], ip, "IPv4")
+        if p["ipv6"]:
+            if ipv6:
+                update_record(p["domain"], p["key"], ipv6, "IPv6")
+            else:
+                logging.warning(f"IPv6 fuer {p['domain']} aktiviert aber keine IPv6 gefunden")
+        else:
+            logging.info(f"IPv6 fuer {p['domain']} deaktiviert")
 
     print("=" * 78)
 
